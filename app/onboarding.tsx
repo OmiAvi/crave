@@ -1,11 +1,10 @@
-import { LinearGradient } from "expo-linear-gradient";
+import { useFonts } from "expo-font";
 import { router } from "expo-router";
 import { Bell, ChevronRight, Mail, MapPin, ScanLine, Utensils, X } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -20,21 +19,28 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import CraveButton from "@/components/CraveButton";
 import Colors from "@/constants/colors";
+import { useCrave } from "@/providers/CraveProvider";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const TOTAL_PAGES = 4;
 
 export default function Onboarding() {
+  const { isSignedIn, signIn } = useCrave();
+  const [fontsLoaded] = useFonts({
+    Ferron: require("../assets/fonts/Ferron-Regular.otf"),
+  });
   const [currentPage, setCurrentPage] = useState(0);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
-  const scrollX = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.8)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const buttonSlide = useRef(new Animated.Value(50)).current;
   const buttonOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Orange flood animation - starts at 0% (bottom) and rises to 100% (full screen)
+  const floodHeight = useRef(new Animated.Value(0)).current;
 
   // Initial animations for welcome page
   React.useEffect(() => {
@@ -68,6 +74,9 @@ export default function Onboarding() {
   }, []);
 
   const animateToPage = (nextPage: number) => {
+    // Calculate flood height percentage based on page (0 = 0%, 1 = 33%, 2 = 66%, 3 = 100%)
+    const targetFloodHeight = (nextPage / (TOTAL_PAGES - 1)) * SCREEN_HEIGHT;
+    
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -94,6 +103,13 @@ export default function Onboarding() {
           friction: 10,
           useNativeDriver: true,
         }),
+        // Animate the orange flood rising
+        Animated.spring(floodHeight, {
+          toValue: targetFloodHeight,
+          tension: 20,
+          friction: 8,
+          useNativeDriver: false, // Height animation can't use native driver
+        }),
       ]).start();
     });
   };
@@ -119,11 +135,27 @@ export default function Onboarding() {
 
   const handleSignUp = () => {
     if (email.toLowerCase().endsWith("@ufl.edu")) {
+      signIn();
       router.replace("/(tabs)");
     } else {
       setEmailError("Please use your @ufl.edu email");
     }
   };
+
+  React.useEffect(() => {
+    if (isSignedIn) {
+      router.replace("/(tabs)");
+    }
+  }, [isSignedIn]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  // Determine colors based on flood level
+  const isLightBackground = currentPage <= 1;
+  const dotActiveColor = isLightBackground ? Colors.orange : Colors.white;
+  const dotInactiveColor = isLightBackground ? "rgba(255,107,0,0.3)" : "rgba(255,255,255,0.4)";
 
   const renderDots = () => (
     <View style={styles.dotsContainer}>
@@ -134,7 +166,7 @@ export default function Onboarding() {
             styles.dot,
             {
               backgroundColor:
-                currentPage === index ? Colors.orange : "rgba(255,107,0,0.3)",
+                currentPage === index ? dotActiveColor : dotInactiveColor,
               width: currentPage === index ? 24 : 8,
             },
           ]}
@@ -155,14 +187,8 @@ export default function Onboarding() {
             },
           ]}
         >
-          <Image
-            source={{
-              uri: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/crave%20logo%20white.PNG-lZcrIHZbqzE7Mt7aXw88WU95M3jyko.png",
-            }}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.taglineWelcome}>Ditch the lines.</Text>
+          <Text style={styles.logo}>CRAVE</Text>
+          <Text style={styles.taglineWelcome}>Ditch the dining hall.</Text>
           <Text style={styles.subtitleWelcome}>Tap. Eat. Done.</Text>
         </Animated.View>
       </View>
@@ -249,15 +275,15 @@ export default function Onboarding() {
       ]}
     >
       <Pressable style={styles.skipButton} onPress={handleSkip}>
-        <Text style={styles.skipText}>Skip</Text>
+        <Text style={styles.skipTextLight}>Skip</Text>
       </Pressable>
 
       <View style={styles.centerContent}>
-        <View style={styles.iconCircle}>
+        <View style={styles.iconCircleLight}>
           <Bell size={48} color={Colors.orange} />
         </View>
-        <Text style={styles.notifTitle}>Stay in the Loop</Text>
-        <Text style={styles.notifSubtitle}>
+        <Text style={styles.notifTitleLight}>Stay in the Loop</Text>
+        <Text style={styles.notifSubtitleLight}>
           Get notified about new restaurant deals, credit bonuses, and exclusive
           offers for Gators.
         </Text>
@@ -266,12 +292,12 @@ export default function Onboarding() {
       <View style={styles.bottomButtonContainer}>
         <CraveButton
           label="Enable Notifications"
-          variant="primary"
+          variant="dark"
           onPress={handleNext}
           style={styles.fullWidthButton}
         />
         <Pressable onPress={handleSkip} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Maybe Later</Text>
+          <Text style={styles.secondaryButtonTextLight}>Maybe Later</Text>
         </Pressable>
       </View>
     </Animated.View>
@@ -294,15 +320,15 @@ export default function Onboarding() {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.signUpInner}>
             <View style={styles.signUpTop}>
-              <View style={styles.emailIconCircle}>
+              <View style={styles.emailIconCircleLight}>
                 <Mail size={40} color={Colors.orange} />
               </View>
-              <Text style={styles.signUpTitle}>Join Crave</Text>
-              <Text style={styles.signUpSubtitle}>
+              <Text style={styles.signUpTitleLight}>Join Crave</Text>
+              <Text style={styles.signUpSubtitleLight}>
                 Sign up with your UF email to get started
               </Text>
 
-              <View style={styles.inputContainer}>
+              <View style={styles.inputContainerLight}>
                 <Mail
                   size={20}
                   color={email ? Colors.orange : Colors.slate}
@@ -325,11 +351,11 @@ export default function Onboarding() {
                 )}
               </View>
               {emailError ? (
-                <Text style={styles.errorText}>{emailError}</Text>
+                <Text style={styles.errorTextLight}>{emailError}</Text>
               ) : null}
 
-              <View style={styles.ufBadge}>
-                <Text style={styles.ufBadgeText}>
+              <View style={styles.ufBadgeLight}>
+                <Text style={styles.ufBadgeTextLight}>
                   Exclusive for University of Florida students
                 </Text>
               </View>
@@ -338,16 +364,19 @@ export default function Onboarding() {
             <View style={styles.bottomButtonContainer}>
               <CraveButton
                 label="Create Account"
-                variant="primary"
+                variant="dark"
                 onPress={handleSignUp}
                 style={styles.fullWidthButton}
                 disabled={!email || !!emailError}
               />
               <Pressable
-                onPress={() => router.replace("/(tabs)")}
+                onPress={() => {
+                  signIn();
+                  router.replace("/(tabs)");
+                }}
                 style={styles.secondaryButton}
               >
-                <Text style={styles.secondaryButtonText}>
+                <Text style={styles.secondaryButtonTextLight}>
                   Already have an account? Sign In
                 </Text>
               </Pressable>
@@ -374,15 +403,25 @@ export default function Onboarding() {
   };
 
   return (
-    <LinearGradient
-      colors={currentPage === 0 ? [Colors.orange, "#FF4F00"] : [Colors.white, Colors.cream]}
-      style={styles.container}
-    >
+    <View style={styles.container}>
+      {/* White background base */}
+      <View style={styles.whiteBackground} />
+      
+      {/* Orange flood that rises from the bottom */}
+      <Animated.View
+        style={[
+          styles.orangeFlood,
+          {
+            height: floodHeight,
+          },
+        ]}
+      />
+      
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         {currentPage > 0 && renderDots()}
         {renderCurrentPage()}
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -448,9 +487,20 @@ function StepCard({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  whiteBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: Colors.white,
+  },
+  orangeFlood: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.orange,
+  },
   safe: { flex: 1, paddingHorizontal: 24 },
   pageContainer: { flex: 1 },
-  
+
   // Dots
   dotsContainer: {
     flexDirection: "row",
@@ -474,18 +524,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: {
-    width: 200,
-    height: 80,
+    color: Colors.orange,
+    fontFamily: "Ferron",
+    fontSize: 92,
+    lineHeight: 96,
+    letterSpacing: 2,
     marginBottom: 20,
   },
   taglineWelcome: {
-    color: Colors.white,
+    color: Colors.ink,
     fontSize: 28,
     fontWeight: "800",
     marginTop: 10,
   },
   subtitleWelcome: {
-    color: "rgba(255,255,255,0.9)",
+    color: Colors.slate,
     fontSize: 18,
     fontWeight: "600",
     marginTop: 8,
@@ -580,6 +633,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  skipTextLight: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   centerContent: {
     flex: 1,
     justifyContent: "center",
@@ -595,6 +653,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 30,
   },
+  iconCircleLight: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 30,
+  },
   notifTitle: {
     fontSize: 28,
     fontWeight: "900",
@@ -602,9 +669,22 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 12,
   },
+  notifTitleLight: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: Colors.white,
+    textAlign: "center",
+    marginBottom: 12,
+  },
   notifSubtitle: {
     fontSize: 16,
     color: Colors.slate,
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  notifSubtitleLight: {
+    fontSize: 16,
+    color: "rgba(255,255,255,0.9)",
     textAlign: "center",
     lineHeight: 24,
   },
@@ -631,6 +711,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 24,
   },
+  emailIconCircleLight: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
   signUpTitle: {
     fontSize: 28,
     fontWeight: "900",
@@ -638,9 +727,22 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 8,
   },
+  signUpTitleLight: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: Colors.white,
+    textAlign: "center",
+    marginBottom: 8,
+  },
   signUpSubtitle: {
     fontSize: 16,
     color: Colors.slate,
+    textAlign: "center",
+    marginBottom: 32,
+  },
+  signUpSubtitleLight: {
+    fontSize: 16,
+    color: "rgba(255,255,255,0.9)",
     textAlign: "center",
     marginBottom: 32,
   },
@@ -654,6 +756,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     width: "100%",
     height: 56,
+  },
+  inputContainerLight: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    borderWidth: 0,
+    paddingHorizontal: 16,
+    width: "100%",
+    height: 56,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
   inputIcon: {
     marginRight: 12,
@@ -673,6 +790,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontWeight: "600",
   },
+  errorTextLight: {
+    color: "#FFD6D6",
+    fontSize: 13,
+    marginTop: 8,
+    fontWeight: "600",
+  },
   ufBadge: {
     backgroundColor: "#FFF1E6",
     paddingVertical: 10,
@@ -680,8 +803,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 24,
   },
+  ufBadgeLight: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 24,
+  },
   ufBadgeText: {
     color: Colors.orange,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  ufBadgeTextLight: {
+    color: Colors.white,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -699,6 +834,11 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: Colors.slate,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  secondaryButtonTextLight: {
+    color: "rgba(255,255,255,0.8)",
     fontSize: 15,
     fontWeight: "600",
   },
