@@ -10,7 +10,7 @@ interface CraveState {
   addCredits: (amount: number) => void;
   spendCredits: (amount: number, restaurantName: string) => void;
   toggleFavorite: (restaurantId: string) => void;
-  setPlan: (planId: string) => void;
+  selectPlan: (planId: string) => void;
 }
 
 const CraveContext = createContext<CraveState | undefined>(undefined);
@@ -64,7 +64,7 @@ export function CraveProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const setPlan = useCallback((id: string) => {
+  const selectPlan = useCallback((id: string) => {
     setPlanId(id);
   }, []);
 
@@ -78,7 +78,7 @@ export function CraveProvider({ children }: { children: React.ReactNode }) {
         addCredits,
         spendCredits,
         toggleFavorite,
-        setPlan,
+        selectPlan,
       }}
     >
       {children}

@@ -16,12 +16,12 @@ import { MEAL_PLANS } from "@/mocks/data";
 import { useCrave } from "@/providers/CraveProvider";
 
 export default function PlansScreen() {
-  const { planId, setPlan, addCredits } = useCrave();
+  const { planId, selectPlan, addCredits } = useCrave();
 
   const handleSelect = (id: string) => {
     const plan = MEAL_PLANS.find((p) => p.id === id);
     if (plan) {
-      setPlan(id);
+      selectPlan(id);
       addCredits(plan.credits);
       router.back();
     }
